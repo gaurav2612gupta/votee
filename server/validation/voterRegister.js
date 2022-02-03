@@ -7,7 +7,7 @@ const validateStudentRegisterInput = (data) => {
   data.email = !isEmpty(data.email) ? data.email : "";
   data.profession = !isEmpty(data.profession) ? data.profession : "";
   data.dob = !isEmpty(data.dob) ? data.dob : "";
-  data.year = !isEmpty(data.year) ? data.year : "";
+  // data.year = !isEmpty(data.year) ? data.year : "";
 
   if (!Validator.isLength(data.name, { min: 2, max: 30 })) {
     errors.name = "Name must be between 2 and 30 characters";
@@ -29,9 +29,9 @@ const validateStudentRegisterInput = (data) => {
     errors.profession = "Department field is required";
   }
 
-  if (Validator.isEmpty(data.year)) {
-    errors.year = "Year field is required";
-  }
+  // if (Validator.isEmpty(data.year)) {
+  //   errors.year = "Year field is required";
+  // }
 
   if (Validator.isEmpty(data.dob)) {
     errors.dob = "DOB field is required";

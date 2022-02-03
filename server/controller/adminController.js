@@ -1,12 +1,13 @@
 const bcrypt = require("bcryptjs");
 const gravatar = require("gravatar");
 const jwt = require("jsonwebtoken");
-
+let multer = require("multer");
+const excelToJson = require("convert-excel-to-json");
 //Validation
 const validateAdminRegisterInput = require("../validation/adminRegister");
 const validateVoterRegisterInput = require("../validation/voterRegister");
 const validateAdminLoginInput = require("../validation/adminLogin");
-
+var xlsx = require("xlsx");
 //Models
 
 const Admin = require("../models/admin");
@@ -109,56 +110,71 @@ module.exports = {
 
   addVoter: async (req, res, next) => {
     try {
-      const { errors, isValid } = validateVoterRegisterInput(req.body);
+      // console.log(req.file);
 
-      if (!isValid) {
-        return res.status(400).json(errors);
+      // convert excel to json
+      var dataPathExcel = `./excel_file/${req.file.filename}`;
+
+      var wb = xlsx.readFile(dataPathExcel);
+      var sheetName = wb.SheetNames[0];
+      var sheetValue = wb.Sheets[sheetName];
+
+      var excelData = xlsx.utils.sheet_to_json(sheetValue);
+
+      //iterate over excel sheet
+
+      for (var i = 0; i < excelData.length; i++) {
+        const { errors, isValid } = validateVoterRegisterInput(excelData[i]);
+
+        if (!isValid) {
+          return res.status(400).json(errors);
+        }
+        const {
+          name,
+          email,
+          year,
+          fatherName,
+          aadharCard,
+          gender,
+          profession,
+          dob,
+          VoterMobileNumber,
+        } = excelData[i];
+
+        const voter = await Voter.findOne({ email });
+
+        if (voter) {
+          errors.email = `${email} already exist`;
+          return res.status(400).json(errors);
+        }
+        const avatar = gravatar.url(email, { s: "200", r: "pg", d: "mm" });
+        let hashedPassword;
+        hashedPassword = await bcrypt.hash(dob, 10);
+        var date = new Date();
+        const batch = date.getFullYear();
+        var str = email;
+        var nameMatch = str.match(/^([^@]*)@/);
+        var username = nameMatch ? nameMatch[1] : null;
+        var components = ["voter", "-", username];
+
+        var registrationNumber = components.join("");
+        const newVoter = await new Voter({
+          name,
+          email,
+          password: hashedPassword,
+          year,
+          fatherName,
+          aadharCard,
+          gender,
+          registrationNumber,
+          profession,
+          avatar,
+          dob,
+          VoterMobileNumber,
+        });
+        await newVoter.save();
       }
-      const {
-        name,
-        email,
-        year,
-        fatherName,
-        aadharCard,
-        gender,
-        profession,
-        dob,
-        VoterMobileNumber,
-      } = req.body;
-
-      const voter = await Voter.findOne({ email });
-      if (voter) {
-        errors.email = "Email already exist";
-        return res.status(400).json(errors);
-      }
-      const avatar = gravatar.url(email, { s: "200", r: "pg", d: "mm" });
-      let hashedPassword;
-      hashedPassword = await bcrypt.hash(dob, 10);
-      var date = new Date();
-      const batch = date.getFullYear();
-      var str = email;
-      var nameMatch = str.match(/^([^@]*)@/);
-      var username = nameMatch ? nameMatch[1] : null;
-      var components = ["voter", "-", username];
-
-      var registrationNumber = components.join("");
-      const newVoter = await new Voter({
-        name,
-        email,
-        password: hashedPassword,
-        year,
-        fatherName,
-        aadharCard,
-        gender,
-        registrationNumber,
-        profession,
-        avatar,
-        dob,
-        VoterMobileNumber,
-      });
-      await newVoter.save();
-
-      res.status(200).json({ result: newVoter });
+      res.status(200).json({ message: "Successfully added " });
     } catch (err) {
       res
         .status(400)
